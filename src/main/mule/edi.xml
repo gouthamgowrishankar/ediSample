@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:x12="http://www.mulesoft.org/schema/mule/x12" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/x12 http://www.mulesoft.org/schema/mule/x12/current/mule-x12.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e5fe0a2-da3e-4d09-8b20-447cdef79ed7" >
+		<http:listener-connection host="0.0.0.0" port="8080" />
+	</http:listener-config>
+	<x12:config name="X12_EDI_Config" doc:name="X12 EDI Config" doc:id="5582666b-5f12-435a-ab4a-3ed88b58ed98" interchangeIdQualifierSelf="ZZ" interchangeIdSelf="Mule" groupIdSelf="DA" interchangeIdQualifierPartner="ZZ" interchangeIdPartner="DP" groupIdPartner="DP">
+		<x12:schemas >
+			<x12:schema value="/x12/004010/210.esl" />
+		</x12:schemas>
+	</x12:config>
+	<flow name="ediFlow" doc:id="4afb0a4f-bfe5-4950-a545-4c3596504622" >
+		<http:listener doc:name="Listener" doc:id="e05099dd-d017-40ca-aa60-50ddd94c7949" config-ref="HTTP_Listener_config" path="/edi"/>
+		<ee:transform doc:name="Transform Message" doc:id="09e9aaf1-088b-4e4f-929d-fda9e267ebda" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+    Delimiters: "*>U~",
+
+    TransactionSets: {
+
+        v004050: {
+
+            "849": [{
+
+                Interchange: {
+
+                    ISA12: "dfggt"
+
+                },
+
+                Group: {
+
+                    GS01: payload.BillingCountry,
+
+                    GS02: payload.BillingCity,
+
+                    GS03: payload.BillingState,
+
+                    GS04: payload.Reciever_date as Date,
+
+                    GS05: payload.AccountNumber as Number,
+
+                    GS06: payload.Account_Number as Number,
+
+                    GS07: payload.Billing_Country,
+
+                    GS08: payload.Billing_Country
+
+                },
+
+                SetHeader: {
+
+                    ST01: payload.BillingCountry,
+
+                    ST02: payload.BillingCity,
+
+                   ST03: payload.BillingState
+
+                },
+
+                Heading: {
+
+                    "0200_BRC": {
+
+                        BRC01: payload.AccountNumber,
+
+                        BRC02: payload.Reciever_date as Date,
+
+                        BRC03: payload.Billing_State,
+
+                        BRC04: payload.Billing_City,
+
+                        BRC05: payload.Account_Number as Number
+
+                    }
+
+                },
+
+                Detail: {
+
+                },
+
+                Summary: {
+
+                    "0100_CTT": {
+
+                        CTT01: payload.AccountNumber as Number,
+
+                        CTT02: payload.Account_Number as Number,
+
+                        CTT03: payload.Account_Number as Number,
+
+                        CTT04: payload.Name_person,
+
+                        CTT05: payload.Account_Number as Number,
+
+                        CTT06: payload.Billing_City,
+
+                        CTT07: payload.Name_person
+
+                    },
+
+                    "0200_AMT": [{
+
+                        AMT01: payload.Name_person,
+
+                        AMT02: payload.Account_Number as Number,
+
+                        AMT03: "9"
+
+                    }]
+
+                }
+
+            }]
+
+        }
+
+    }
+
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<x12:write doc:name="Write" doc:id="61218aca-df79-47b1-8b2f-96730e1bcad1" config-ref="X12_EDI_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="3616653b-3da4-418e-8b9f-1143c48a0636" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<x12:read doc:name="Read" doc:id="83447dfe-fc2a-4485-80a7-f6c612580bac" config-ref="X12_EDI_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="7a2f3fc2-3cf3-47f0-a572-918852ea217e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
