@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:x12="http://www.mulesoft.org/schema/mule/x12" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:compression="http://www.mulesoft.org/schema/mule/compression"
+	xmlns:x12="http://www.mulesoft.org/schema/mule/x12"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-http://www.mulesoft.org/schema/mule/x12 http://www.mulesoft.org/schema/mule/x12/current/mule-x12.xsd">
+http://www.mulesoft.org/schema/mule/x12 http://www.mulesoft.org/schema/mule/x12/current/mule-x12.xsd
+http://www.mulesoft.org/schema/mule/compression http://www.mulesoft.org/schema/mule/compression/current/mule-compression.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e5fe0a2-da3e-4d09-8b20-447cdef79ed7" >
 		<http:listener-connection host="0.0.0.0" port="8080" />
 	</http:listener-config>
@@ -14,8 +16,29 @@ http://www.mulesoft.org/schema/mule/x12 http://www.mulesoft.org/schema/mule/x12/
 			<x12:schema value="/x12/004010/210.esl" />
 		</x12:schemas>
 	</x12:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="29d133dc-53ea-413e-98ad-14decb0be3a7" >
+		<file:connection workingDir="C:\Users\Gowrishankar\Downloads" />
+	</file:config>
+	<flow name="ediFlow1" doc:id="67a1e5f4-8483-4892-97f2-034c0479e08f" >
+		<http:listener doc:name="Listener" doc:id="e05099dd-d017-40ca-aa60-50ddd94c7949" config-ref="HTTP_Listener_config" path="/edi" />
+		<file:list doc:name="List" doc:id="ddecc783-e957-48cf-9810-95b331876b89" config-ref="File_Config" directoryPath="C:\Users\Gowrishankar\Downloads\freelancer-concept-illustration"/>
+		<ee:transform doc:name="Transform Message" doc:id="a66bd358-a7b6-47a6-94bd-bb2b4f681f0e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+(0 to sizeOf(payload) - 1) as Array reduce (index, acc={}) ->
+acc ++ { (payload[index].attributes.fileName): payload[index].payload}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<compression:archive doc:name="Archive" doc:id="cbee7723-12dd-4551-9b6b-d4bc4584ba03" >
+			<compression:archiver >
+				<compression:zip-archiver forceZip64="true"/>
+			</compression:archiver>
+		</compression:archive>
+		<file:write doc:name="Write" doc:id="a541ca55-f727-4047-9bcf-b72a88a768c2" config-ref="File_Config" path="zippedFolder.gz"/>
+	</flow>
 	<flow name="ediFlow" doc:id="4afb0a4f-bfe5-4950-a545-4c3596504622" >
-		<http:listener doc:name="Listener" doc:id="e05099dd-d017-40ca-aa60-50ddd94c7949" config-ref="HTTP_Listener_config" path="/edi"/>
 		<ee:transform doc:name="Transform Message" doc:id="09e9aaf1-088b-4e4f-929d-fda9e267ebda" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
